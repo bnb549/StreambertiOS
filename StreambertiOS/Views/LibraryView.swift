@@ -1,53 +1,30 @@
+import Combine
 import SwiftUI
 
-/// Watchlist stored locally using UserDefaults.
-struct LibraryView: View {
-    @StateObject private var vm = LibraryViewModel()
-
-    var body: some View {
-        NavigationView {
-            ZStack {
-                Color.black.ignoresSafeArea()
-                if vm.watchlist.isEmpty {
-                    VStack(spacing: 12) {
-                        Image(systemName: "bookmark.slash").font(.largeTitle).foregroundColor(.gray)
-                        Text("Your watchlist is empty").foregroundColor(.gray)
-                    }
-                } else {
-                    List {
-                        ForEach(vm.watchlist) { item in
-                            NavigationLink(destination: MediaDetailView(item: item)) {
-                                SearchRow(item: item)
-                            }
-                            .listRowBackground(Color.black)
-                        }
-                        .onDelete(perform: vm.remove)
-                    }
-                    .listStyle(.plain)
-                }
-            }
-            .navigationTitle("My Library")
-        }
-    }
-}
-
+/// Watchlist stored locally. Shared so the detail screen and this tab stay in sync.
 @MainActor
-class LibraryViewModel: ObservableObject {
-    @Published var watchlist: [MediaItem] = []
+final class LibraryStore: ObservableObject {
+    @Published private(set) var watchlist: [MediaItem] = []
     private let key = "watchlist"
 
     init() { load() }
 
     func load() {
-        if let data = UserDefaults.standard.data(forKey: key),
-           let items = try? JSONDecoder().decode([MediaItem].self, from: data) {
-            watchlist = items
-        }
+        guard let data = UserDefaults.standard.data(forKey: key),
+              let items = try? JSONDecoder().decode([MediaItem].self, from: data) else { return }
+        watchlist = items
     }
 
-    func add(_ item: MediaItem) {
-        guard !watchlist.contains(where: { $0.id == item.id }) else { return }
-        watchlist.append(item)
+    func contains(_ item: MediaItem) -> Bool {
+        watchlist.contains { $0.rowID == item.rowID }
+    }
+
+    func toggle(_ item: MediaItem) {
+        if let index = watchlist.firstIndex(where: { $0.rowID == item.rowID }) {
+            watchlist.remove(at: index)
+        } else {
+            watchlist.append(item)
+        }
         save()
     }
 
@@ -59,6 +36,36 @@ class LibraryViewModel: ObservableObject {
     private func save() {
         if let data = try? JSONEncoder().encode(watchlist) {
             UserDefaults.standard.set(data, forKey: key)
+        }
+    }
+}
+
+struct LibraryView: View {
+    @EnvironmentObject private var library: LibraryStore
+
+    var body: some View {
+        NavigationStack {
+            ZStack {
+                Color.black.ignoresSafeArea()
+                if library.watchlist.isEmpty {
+                    VStack(spacing: 12) {
+                        Image(systemName: "bookmark.slash").font(.largeTitle).foregroundColor(.gray)
+                        Text("Your watchlist is empty").foregroundColor(.gray)
+                    }
+                } else {
+                    List {
+                        ForEach(library.watchlist, id: \.rowID) { item in
+                            NavigationLink(destination: MediaDetailView(item: item)) {
+                                SearchRow(item: item)
+                            }
+                            .listRowBackground(Color.black)
+                        }
+                        .onDelete(perform: library.remove)
+                    }
+                    .listStyle(.plain)
+                }
+            }
+            .navigationTitle("My Library")
         }
     }
 }

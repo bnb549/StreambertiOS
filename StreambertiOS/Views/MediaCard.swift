@@ -11,8 +11,8 @@ struct MediaCard: View {
                 Color.gray.opacity(0.3)
             }
             .frame(width: 130, height: 195)
-            .cornerRadius(10)
             .clipped()
+            .clipShape(RoundedRectangle(cornerRadius: 10))
 
             Text(item.displayTitle)
                 .font(.caption.bold())

@@ -24,6 +24,19 @@ struct MediaItem: Identifiable, Codable {
 
     var displayTitle: String { title ?? name ?? "Unknown" }
     var displayDate: String  { releaseDate ?? firstAirDate ?? "" }
+
+    /// Movie and TV ids overlap, so lists and the watchlist key off both.
+    var resolvedMediaType: String {
+        if let mediaType, mediaType == "movie" || mediaType == "tv" {
+            return mediaType
+        }
+        if title != nil { return "movie" }
+        if name != nil { return "tv" }
+        return "movie"
+    }
+
+    var rowID: String { "\(resolvedMediaType)-\(id)" }
+
     var posterURL: URL? {
         guard let path = posterPath else { return nil }
         return URL(string: "https://image.tmdb.org/t/p/w500\(path)")

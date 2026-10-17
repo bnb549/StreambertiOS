@@ -6,7 +6,7 @@ struct SettingsView: View {
     @State private var saved  = false
 
     var body: some View {
-        NavigationView {
+        NavigationStack {
             ZStack {
                 Color.black.ignoresSafeArea()
                 Form {
@@ -26,7 +26,7 @@ struct SettingsView: View {
                     Section(header: Text("Stream Sources")) {
                         Text("VidSrc — Primary source")
                         Text("Videasy — Backup source")
-                        Text("2Embed  — Backup source")
+                        Text("Vidking — Backup source")
                     }
 
                     Section(header: Text("About")) {

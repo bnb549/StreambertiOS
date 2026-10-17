@@ -1,3 +1,4 @@
+import Combine
 import SwiftUI
 
 struct TVSeasonPicker: View {
@@ -6,18 +7,22 @@ struct TVSeasonPicker: View {
     @Binding var selectedEpisode: TVEpisode?
     @StateObject private var vm = SeasonViewModel()
 
+    private var seasons: [TVSeason] {
+        let regular = details.seasons
+            .filter { $0.seasonNumber > 0 }
+            .sorted { $0.seasonNumber < $1.seasonNumber }
+        if !regular.isEmpty { return regular }
+        return details.seasons.sorted { $0.seasonNumber < $1.seasonNumber }
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Episodes").font(.headline).foregroundColor(.white).padding(.horizontal)
 
-            // Season picker
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 10) {
-                    ForEach(details.seasons.filter { $0.seasonNumber > 0 }) { season in
-                        Button(action: {
-                            selectedSeason = season
-                            Task { await vm.loadEpisodes(tvID: details.id, season: season.seasonNumber) }
-                        }) {
+                    ForEach(seasons) { season in
+                        Button(action: { Task { await select(season) } }) {
                             Text(season.name)
                                 .font(.caption.bold())
                                 .padding(.horizontal, 12)
@@ -30,8 +35,16 @@ struct TVSeasonPicker: View {
                 }.padding(.horizontal)
             }
 
-            // Episode list
-            if !vm.episodes.isEmpty {
+            if vm.isLoading && vm.episodes.isEmpty {
+                ProgressView()
+                    .tint(.white)
+                    .padding(.horizontal)
+            } else if let message = vm.errorMessage, vm.episodes.isEmpty {
+                Text(message)
+                    .font(.caption)
+                    .foregroundColor(.gray)
+                    .padding(.horizontal)
+            } else {
                 ForEach(vm.episodes) { episode in
                     Button(action: { selectedEpisode = episode }) {
                         HStack(spacing: 12) {
@@ -39,17 +52,19 @@ struct TVSeasonPicker: View {
                                 img.resizable().scaledToFill()
                             } placeholder: { Color.gray.opacity(0.3) }
                             .frame(width: 100, height: 60)
-                            .cornerRadius(8)
                             .clipped()
+                            .clipShape(RoundedRectangle(cornerRadius: 8))
 
                             VStack(alignment: .leading, spacing: 4) {
                                 Text("E\(episode.episodeNumber): \(episode.name)")
                                     .font(.subheadline.bold())
                                     .foregroundColor(selectedEpisode?.id == episode.id ? .purple : .white)
+                                    .multilineTextAlignment(.leading)
                                 Text(episode.overview)
                                     .font(.caption)
                                     .foregroundColor(.gray)
                                     .lineLimit(2)
+                                    .multilineTextAlignment(.leading)
                             }
                         }
                         .padding(.horizontal)
@@ -57,14 +72,47 @@ struct TVSeasonPicker: View {
                 }
             }
         }
+        .task(id: details.id) {
+            guard selectedSeason == nil, let first = seasons.first else { return }
+            await select(first)
+        }
+    }
+
+    private func select(_ season: TVSeason) async {
+        selectedSeason = season
+        selectedEpisode = nil
+        let episodes = await vm.loadEpisodes(tvID: details.id, season: season.seasonNumber)
+        guard selectedSeason?.id == season.id, !episodes.isEmpty else { return }
+        selectedEpisode = episodes.first
     }
 }
 
 @MainActor
 class SeasonViewModel: ObservableObject {
     @Published var episodes: [TVEpisode] = []
+    @Published var isLoading = false
+    @Published var errorMessage: String?
+    private var requestID = 0
 
-    func loadEpisodes(tvID: Int, season: Int) async {
-        episodes = (try? await TMDBService.shared.seasonEpisodes(tvID: tvID, season: season)) ?? []
+    func loadEpisodes(tvID: Int, season: Int) async -> [TVEpisode] {
+        requestID += 1
+        let token = requestID
+        isLoading = true
+        errorMessage = nil
+        defer {
+            if token == requestID { isLoading = false }
+        }
+
+        do {
+            let loaded = try await TMDBService.shared.seasonEpisodes(tvID: tvID, season: season)
+            guard token == requestID else { return [] }
+            episodes = loaded
+            return loaded
+        } catch {
+            guard token == requestID else { return [] }
+            episodes = []
+            errorMessage = error.localizedDescription
+            return []
+        }
     }
 }

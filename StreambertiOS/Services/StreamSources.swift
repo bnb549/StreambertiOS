@@ -1,30 +1,31 @@
 import Foundation
 
-/// Returns embed URLs for a given media item.
-/// These match the sources used in the original Streambert Electron app.
+/// Embed URLs for the sources the Streambert desktop app uses.
+/// A TV title needs a season and episode. Returning a movie URL for a show
+/// sends the player to the wrong title.
 struct StreamSources {
 
-    static func vidsrc(mediaType: String, id: Int, season: Int? = nil, episode: Int? = nil) -> URL {
-        if mediaType == "tv", let s = season, let e = episode {
-            return URL(string: "https://vidsrc.to/embed/tv/\(id)/\(s)/\(e)")!
-        } else {
-            return URL(string: "https://vidsrc.to/embed/movie/\(id)")!
+    static func vidsrc(mediaType: String, id: Int, season: Int? = nil, episode: Int? = nil) -> URL? {
+        if mediaType == "tv" {
+            guard let season, let episode else { return nil }
+            return URL(string: "https://vsembed.su/embed/tv/\(id)/\(season)/\(episode)")
         }
+        return URL(string: "https://vsembed.su/embed/movie/\(id)")
     }
 
-    static func videasy(mediaType: String, id: Int, season: Int? = nil, episode: Int? = nil) -> URL {
-        if mediaType == "tv", let s = season, let e = episode {
-            return URL(string: "https://videasy.net/tv/\(id)/\(s)/\(e)")!
-        } else {
-            return URL(string: "https://videasy.net/movie/\(id)")!
+    static func videasy(mediaType: String, id: Int, season: Int? = nil, episode: Int? = nil) -> URL? {
+        if mediaType == "tv" {
+            guard let season, let episode else { return nil }
+            return URL(string: "https://player.videasy.to/tv/\(id)/\(season)/\(episode)?overlay=true")
         }
+        return URL(string: "https://player.videasy.to/movie/\(id)?overlay=true")
     }
 
-    static func twoEmbed(mediaType: String, id: Int, season: Int? = nil, episode: Int? = nil) -> URL {
-        if mediaType == "tv", let s = season, let e = episode {
-            return URL(string: "https://www.2embed.cc/embedtv/\(id)&s=\(s)&e=\(e)")!
-        } else {
-            return URL(string: "https://www.2embed.cc/embed/\(id)")!
+    static func vidking(mediaType: String, id: Int, season: Int? = nil, episode: Int? = nil) -> URL? {
+        if mediaType == "tv" {
+            guard let season, let episode else { return nil }
+            return URL(string: "https://www.vidking.net/embed/tv/\(id)/\(season)/\(episode)?autoPlay=true")
         }
+        return URL(string: "https://www.vidking.net/embed/movie/\(id)?autoPlay=true")
     }
 }

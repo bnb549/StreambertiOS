@@ -1,19 +1,34 @@
+import Combine
 import SwiftUI
 
 struct HomeView: View {
     @StateObject private var vm = HomeViewModel()
 
     var body: some View {
-        NavigationView {
+        NavigationStack {
             ZStack {
                 Color.black.ignoresSafeArea()
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 24) {
-                        trendingSection(title: "Trending Today", items: vm.trendingAll)
-                        trendingSection(title: "Popular Movies",  items: vm.trendingMovies)
-                        trendingSection(title: "Popular TV Shows",items: vm.trendingTV)
+                if vm.isLoading && vm.isEmpty {
+                    ProgressView()
+                        .tint(.white)
+                } else if let message = vm.errorMessage, vm.isEmpty {
+                    VStack(spacing: 12) {
+                        Text(message)
+                            .foregroundColor(.gray)
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal)
+                        Button("Retry") { Task { await vm.load() } }
+                            .foregroundColor(.purple)
                     }
-                    .padding(.vertical)
+                } else {
+                    ScrollView {
+                        VStack(alignment: .leading, spacing: 24) {
+                            trendingSection(title: "Trending Today", items: vm.trendingAll)
+                            trendingSection(title: "Popular Movies", items: vm.trendingMovies)
+                            trendingSection(title: "Popular TV Shows", items: vm.trendingTV)
+                        }
+                        .padding(.vertical)
+                    }
                 }
             }
             .navigationTitle("Streambert")
@@ -24,21 +39,24 @@ struct HomeView: View {
 
     @ViewBuilder
     private func trendingSection(title: String, items: [MediaItem]) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text(title)
-                .font(.title3.bold())
-                .foregroundColor(.white)
-                .padding(.horizontal)
+        if !items.isEmpty {
+            VStack(alignment: .leading, spacing: 8) {
+                Text(title)
+                    .font(.title3.bold())
+                    .foregroundColor(.white)
+                    .padding(.horizontal)
 
-            ScrollView(.horizontal, showsIndicators: false) {
-                LazyHStack(spacing: 12) {
-                    ForEach(items) { item in
-                        NavigationLink(destination: MediaDetailView(item: item)) {
-                            MediaCard(item: item)
+                ScrollView(.horizontal, showsIndicators: false) {
+                    LazyHStack(spacing: 12) {
+                        ForEach(items, id: \.rowID) { item in
+                            NavigationLink(destination: MediaDetailView(item: item)) {
+                                MediaCard(item: item)
+                            }
+                            .buttonStyle(.plain)
                         }
                     }
+                    .padding(.horizontal)
                 }
-                .padding(.horizontal)
             }
         }
     }
@@ -46,14 +64,65 @@ struct HomeView: View {
 
 @MainActor
 class HomeViewModel: ObservableObject {
-    @Published var trendingAll:    [MediaItem] = []
+    @Published var trendingAll: [MediaItem] = []
     @Published var trendingMovies: [MediaItem] = []
-    @Published var trendingTV:     [MediaItem] = []
+    @Published var trendingTV: [MediaItem] = []
+    @Published var isLoading = false
+    @Published var errorMessage: String?
+    private var loadID = 0
+
+    var isEmpty: Bool {
+        trendingAll.isEmpty && trendingMovies.isEmpty && trendingTV.isEmpty
+    }
 
     func load() async {
-        async let all    = TMDBService.shared.fetchTrending(mediaType: "all")
-        async let movies = TMDBService.shared.fetchTrending(mediaType: "movie")
-        async let tv     = TMDBService.shared.fetchTrending(mediaType: "tv")
-        (trendingAll, trendingMovies, trendingTV) = (try! await all, try! await movies, try! await tv)
+        loadID += 1
+        let token = loadID
+        isLoading = true
+        errorMessage = nil
+        defer {
+            if token == loadID { isLoading = false }
+        }
+
+        async let all = fetch(.all)
+        async let movies = fetch(.movie)
+        async let tv = fetch(.tv)
+        let results = await (all, movies, tv)
+        guard !Task.isCancelled else { return }
+
+        if case .success(let items) = results.0 { trendingAll = items }
+        if case .success(let items) = results.1 { trendingMovies = items }
+        if case .success(let items) = results.2 { trendingTV = items }
+
+        let failures = [results.0, results.1, results.2].compactMap(\.failure)
+        if failures.count == 3 {
+            errorMessage = failures.first?.localizedDescription
+        }
+    }
+
+    private enum Feed {
+        case all, movie, tv
+        var mediaType: String {
+            switch self {
+            case .all: return "all"
+            case .movie: return "movie"
+            case .tv: return "tv"
+            }
+        }
+    }
+
+    private func fetch(_ feed: Feed) async -> Result<[MediaItem], Error> {
+        do {
+            return .success(try await TMDBService.shared.fetchTrending(mediaType: feed.mediaType))
+        } catch {
+            return .failure(error)
+        }
+    }
+}
+
+private extension Result {
+    var failure: Failure? {
+        if case .failure(let error) = self { return error }
+        return nil
     }
 }
