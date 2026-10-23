@@ -3,6 +3,8 @@ import SwiftUI
 
 struct TVSeasonPicker: View {
     let details: TVDetails
+    var resumeSeason: Int?
+    var resumeEpisode: Int?
     @Binding var selectedSeason: TVSeason?
     @Binding var selectedEpisode: TVEpisode?
     @StateObject private var vm = SeasonViewModel()
@@ -69,21 +71,29 @@ struct TVSeasonPicker: View {
                         }
                         .padding(.horizontal)
                     }
+                    .id(episode.id)
                 }
             }
         }
         .task(id: details.id) {
-            guard selectedSeason == nil, let first = seasons.first else { return }
-            await select(first)
+            guard selectedSeason == nil else { return }
+            let match = seasons.first { $0.seasonNumber == resumeSeason }
+            guard let season = match ?? seasons.first else { return }
+            let preferred = match == nil ? nil : resumeEpisode
+            await select(season, preferredEpisode: preferred)
         }
     }
 
-    private func select(_ season: TVSeason) async {
+    private func select(_ season: TVSeason, preferredEpisode: Int? = nil) async {
         selectedSeason = season
         selectedEpisode = nil
         let episodes = await vm.loadEpisodes(tvID: details.id, season: season.seasonNumber)
         guard selectedSeason?.id == season.id, !episodes.isEmpty else { return }
-        selectedEpisode = episodes.first
+        if let preferredEpisode, let saved = episodes.first(where: { $0.episodeNumber == preferredEpisode }) {
+            selectedEpisode = saved
+        } else {
+            selectedEpisode = episodes.first
+        }
     }
 }
 

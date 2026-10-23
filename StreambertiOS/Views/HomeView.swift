@@ -3,6 +3,7 @@ import SwiftUI
 
 struct HomeView: View {
     @StateObject private var vm = HomeViewModel()
+    @EnvironmentObject private var library: LibraryStore
 
     var body: some View {
         NavigationStack {
@@ -23,6 +24,7 @@ struct HomeView: View {
                 } else {
                     ScrollView {
                         VStack(alignment: .leading, spacing: 24) {
+                            continueSection
                             trendingSection(title: "Trending Today", items: vm.trendingAll)
                             trendingSection(title: "Popular Movies", items: vm.trendingMovies)
                             trendingSection(title: "Popular TV Shows", items: vm.trendingTV)
@@ -34,6 +36,31 @@ struct HomeView: View {
             .navigationTitle("Streambert")
             .navigationBarTitleDisplayMode(.large)
             .task { await vm.load() }
+        }
+    }
+
+    @ViewBuilder
+    private var continueSection: some View {
+        let places = library.recentPlaces
+        if !places.isEmpty {
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Continue Watching")
+                    .font(.title3.bold())
+                    .foregroundColor(.white)
+                    .padding(.horizontal)
+
+                ScrollView(.horizontal, showsIndicators: false) {
+                    LazyHStack(spacing: 12) {
+                        ForEach(places) { place in
+                            NavigationLink(destination: MediaDetailView(item: place.item)) {
+                                MediaCard(item: place.item, caption: place.shortLabel)
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                    .padding(.horizontal)
+                }
+            }
         }
     }
 

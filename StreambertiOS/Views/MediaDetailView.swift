@@ -14,6 +14,7 @@ struct MediaDetailView: View {
     @State private var playerSource: PlayableSource?
     @State private var selectedSeason: TVSeason?
     @State private var selectedEpisode: TVEpisode?
+    @State private var scrollToSavedEpisode = false
 
     init(item: MediaItem) {
         self.item = item
@@ -25,8 +26,9 @@ struct MediaDetailView: View {
     var body: some View {
         ZStack {
             Color.black.ignoresSafeArea()
-            ScrollView {
-                VStack(alignment: .leading, spacing: 16) {
+            ScrollViewReader { proxy in
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 16) {
                     AsyncImage(url: item.backdropURL) { img in
                         img.resizable().scaledToFill()
                     } placeholder: { Color.gray.opacity(0.2) }
@@ -42,6 +44,11 @@ struct MediaDetailView: View {
                             Text("⭐ \(String(format: "%.1f", item.voteAverage))").foregroundColor(.yellow)
                         }.font(.subheadline)
                         Text(item.overview).foregroundColor(.gray).font(.body)
+                        if mediaType == "tv", let place = library.place(for: item) {
+                            Text("Last watched \(place.label)")
+                                .font(.subheadline)
+                                .foregroundColor(.purple)
+                        }
                     }.padding(.horizontal)
 
                     Button(action: { library.toggle(item) }) {
@@ -76,6 +83,8 @@ struct MediaDetailView: View {
                         if let details = vm.tvDetails {
                             TVSeasonPicker(
                                 details: details,
+                                resumeSeason: library.place(for: item)?.seasonNumber,
+                                resumeEpisode: library.place(for: item)?.episodeNumber,
                                 selectedSeason: $selectedSeason,
                                 selectedEpisode: $selectedEpisode
                             )
@@ -92,10 +101,22 @@ struct MediaDetailView: View {
                     }
                 }
                 .padding(.bottom, 40)
+                }
+                .onChange(of: selectedEpisode?.id) { _, episodeID in
+                    guard scrollToSavedEpisode, let episodeID else { return }
+                    scrollToSavedEpisode = false
+                    Task { @MainActor in
+                        try? await Task.sleep(nanoseconds: 150_000_000)
+                        withAnimation { proxy.scrollTo(episodeID, anchor: .center) }
+                    }
+                }
             }
         }
         .navigationBarTitleDisplayMode(.inline)
-        .task { await vm.load() }
+        .task {
+            scrollToSavedEpisode = library.place(for: item) != nil
+            await vm.load()
+        }
         .fullScreenCover(item: $playerSource) { source in
             PlayerView(url: source.url)
         }
@@ -105,7 +126,10 @@ struct MediaDetailView: View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 12) {
                 ForEach(sources) { src in
-                    Button(action: { playerSource = src }) {
+                    Button(action: {
+                        rememberPlace()
+                        playerSource = src
+                    }) {
                         Text(src.label)
                             .font(.subheadline.bold())
                             .padding(.horizontal, 16)
@@ -130,6 +154,18 @@ struct MediaDetailView: View {
         return candidates.compactMap { label, url in
             url.map { PlayableSource(label: label, url: $0) }
         }
+    }
+
+    private func rememberPlace() {
+        guard mediaType == "tv",
+              let season = selectedSeason?.seasonNumber,
+              let episode = selectedEpisode else { return }
+        library.rememberPlace(
+            item: item,
+            season: season,
+            episode: episode.episodeNumber,
+            episodeName: episode.name
+        )
     }
 }
 

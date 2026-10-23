@@ -83,6 +83,8 @@ class SearchViewModel: ObservableObject {
 
 struct SearchRow: View {
     let item: MediaItem
+    var detail: String? = nil
+
     var body: some View {
         HStack(spacing: 12) {
             AsyncImage(url: item.posterURL) { img in
@@ -97,6 +99,9 @@ struct SearchRow: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text(item.displayTitle).font(.headline).foregroundColor(.white)
                 Text(item.resolvedMediaType.capitalized).font(.caption).foregroundColor(.purple)
+                if let detail {
+                    Text(detail).font(.caption).foregroundColor(.purple).lineLimit(1)
+                }
                 Text(item.displayDate.prefix(4)).font(.caption).foregroundColor(.gray)
             }
         }
