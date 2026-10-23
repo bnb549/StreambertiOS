@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		DAFBAEC03082A76E00C37458 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = DAFBAEBF3082A76E00C37458 /* Assets.xcassets */; };
 		DAFBAEAF3082A76E00C37458 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DAFBAEA23082A76E00C37458 /* ContentView.swift */; };
 		DAFBAEB03082A76E00C37458 /* MediaDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DAFBAEA63082A76E00C37458 /* MediaDetailView.swift */; };
 		DAFBAEB13082A76E00C37458 /* MediaItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = DAFBAE9B3082A76E00C37458 /* MediaItem.swift */; };
@@ -43,6 +44,7 @@
 		DAFBAEAA3082A76E00C37458 /* SetupView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SetupView.swift; sourceTree = "<group>"; };
 		DAFBAEAB3082A76E00C37458 /* TVSeasonPicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TVSeasonPicker.swift; sourceTree = "<group>"; };
 		DAFBAEAD3082A76E00C37458 /* StreambertiOSApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StreambertiOSApp.swift; sourceTree = "<group>"; };
+		DAFBAEBF3082A76E00C37458 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -109,6 +111,7 @@
 		DAFBAEAE3082A76E00C37458 /* StreambertiOS */ = {
 			isa = PBXGroup;
 			children = (
+				DAFBAEBF3082A76E00C37458 /* Assets.xcassets */,
 				DAFBAE9D3082A76E00C37458 /* Models */,
 				DAFBAEA13082A76E00C37458 /* Services */,
 				DAFBAEAC3082A76E00C37458 /* Views */,
@@ -173,6 +176,7 @@
 		000000000000000140000000 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			files = (
+				DAFBAEC03082A76E00C37458 /* Assets.xcassets in Resources */,
 			);
 		};
 /* End PBXResourcesBuildPhase section */
@@ -337,6 +341,7 @@
 		000000000000000111000000 /* Debug configuration for PBXNativeTarget "StreambertiOS" */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = K3HHM2VAUC;
@@ -375,6 +380,7 @@
 		000000000000000112000000 /* Release configuration for PBXNativeTarget "StreambertiOS" */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = K3HHM2VAUC;
